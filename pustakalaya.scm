@@ -1,4 +1,8 @@
-;;; View or update information in library database
+;;; -*- mode: scheme; -*-
+
+;;; A small library manager to help me track my books
+;;; Copyright 2025, Uwe Hollerbach <uhollerbach@gmail.com>
+;;; License: 2clause BSD, see file 'LICENSE' for details
 
 (load-library "hash.scm")
 (load-library "arg-parse.scm")
