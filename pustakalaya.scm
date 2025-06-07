@@ -7,6 +7,8 @@
 (load-library "hash.scm")
 (load-library "arg-parse.scm")
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (define (initialize-db fname)
   (if (file-exists? fname)
       (begin (write-string "database file '" fname "' exists already!\n")
@@ -26,6 +28,7 @@
 		    >    author2_id INTEGER,
 		    >    author3_id INTEGER,
 		    >    author4_id INTEGER,
+		    >    author5_id INTEGER,
 		    >    content_type_id INTEGER,
 		    >    book_type_id INTEGER,
 		    >    publisher_id INTEGER,
@@ -90,7 +93,7 @@
 		    >CREATE TABLE publisher (
 		    >    id INTEGER PRIMARY KEY AUTOINCREMENT,
 		    >    name TEXT
-		    >);
+		    >)
 		    >HERE_DOC
 		    )
 
@@ -103,15 +106,16 @@
 		    >HERE_DOC
 		    )
 
-	;; add as many more as you like
 	(for-each (lambda (a) (do-pbrc db ins-lang a))
-		  '("English" "Mandarin" "Hindi" "Spanish" "Arabic"
-		    "French" "Bengali" "Portuguese" "Russian" "Indonesian"
-		    "Urdu" "German" "Japanese" "Marathi" "Vietnamese"
-		    "Telugu" "Turkish" "Swahili" "Tagalog" "Tamil" "Korean"
-		    "Thai" "Italian" "Gujarati" "Amharic" "Kannada"
-		    "Esperanto" "Dutch" "Danish" "Catalan" "Polish"
-		    "Czech" "Sanskrit" "Hebrew" "Latin" "Greek" "Aramaic"))
+		  '("English" "German" "French" "Spanish" "Latin"))
+
+	;; add as many more as you like
+	;; "Mandarin" "Hindi" "Arabic" "Bengali" "Portuguese" "Russian"
+	;; "Indonesian" "Urdu" "Japanese" "Marathi" "Vietnamese"
+	;; "Telugu" "Turkish" "Swahili" "Tagalog" "Tamil" "Korean"
+	;; "Thai" "Italian" "Gujarati" "Amharic" "Kannada"
+	;; "Esperanto" "Dutch" "Danish" "Catalan" "Polish"
+	;; "Czech" "Sanskrit" "Hebrew" "Greek" "Aramaic"
 
 	;; location table
 	(sqlite-run db #<< HERE_DOC
@@ -127,10 +131,12 @@
 		    "night stand"))
 	(sqlite-close db))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;;; Table names don't seem to be suitable for binding via
-;;; statement-{prepare,bind,run}, so we have to glue strings together.
-;;; That's slightly unsafe in general, but here the table names
-;;; are a fixed set, so not too bad.
+;;; statement-{prepare,bind,run}, so we have to glue strings
+;;; together. That's slightly unsafe in general, but the table
+;;; names are a fixed set, so not too bad.
 
 (define (show-table db name)
   (write-string "######## " name " ########\n")
@@ -189,23 +195,173 @@
       ((3) (check-insert db tname t3 i3 cns))
       (else (write-string "Cannot add '" val "' to author table\n")))))
 
-(define (add-one-book db)
-  (let* ((l1 (read-line-interactive "line1"))
-	 (l2 (read-line-interactive "line2"))
-	 (l3 (read-line-interactive "line3")))
-    (printf "current input is:\nline1: >>>%s<<<\nline2: >>>%s<<<\nline3: >>>%s<<<\n" l1 l2 l3)
-    (let ((acc (read-line-interactive "accept? (Yes/edit/no)")))
-      (printf "YEN is >>>%v<<<\n" acc))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;;	 (more (if m1 (string-trim-left char-whitespace? m1) "")))
-;;;    (cond ((string=? more "")
-;;;	   (loop))
-;;;	  ((char=? #\n (char-downcase (string-ref more 0)))
-;;;	   (write-string "g'bye!\n"))
-;;;	  ((char=? #\y (char-downcase (string-ref more 0)))
-;;;	   (loop))
-;;;	  (else (write-string "huh? don't understand '"
-;;;			      more "'\n")))))))
+(define (read-sanitize prompt)
+  (let ((e1 (read-line-interactive prompt)))
+    (if (string? e1)
+	(let ((e2 (string-trim char-whitespace? e1)))
+	  (if (string=? e2 "") #f e2))
+	#f)))
+
+(define (check-author db prompt)
+  (let ((ti "SELECT * FROM author WHERE id = ?1")
+	(tn1 #<< HERE_DOC
+	     >SELECT * FROM author WHERE (
+	     >    UPPER(name1) = UPPER(?1) OR
+	     >    UPPER(name2) = UPPER(?1) OR
+	     >    UPPER(name3) = UPPER(?1)
+	     >)
+	     >HERE_DOC
+	     )
+	(tn2 #<< HERE_DOC
+	     >SELECT * FROM author WHERE (
+	     >    (UPPER(name1) = UPPER(?1) AND
+	     >     UPPER(name2) = UPPER(?2)) OR
+	     >    (UPPER(name1) = UPPER(?1) AND
+	     >     UPPER(name3) = UPPER(?2)) OR
+	     >    (UPPER(name2) = UPPER(?1) AND
+	     >     UPPER(name1) = UPPER(?2)) OR
+	     >    (UPPER(name2) = UPPER(?1) AND
+	     >     UPPER(name3) = UPPER(?2)) OR
+	     >    (UPPER(name3) = UPPER(?1) AND
+	     >     UPPER(name1) = UPPER(?2)) OR
+	     >    (UPPER(name3) = UPPER(?1) AND
+	     >     UPPER(name2) = UPPER(?2))
+	     >)
+	     >HERE_DOC
+	     )
+	(tn3 #<< HERE_DOC
+	     >SELECT * FROM author WHERE (
+	     >    (UPPER(name1) = UPPER(?1) AND
+	     >     UPPER(name2) = UPPER(?2) AND
+	     >     UPPER(name3) = UPPER(?3)) OR
+	     >    (UPPER(name1) = UPPER(?1) AND
+	     >     UPPER(name3) = UPPER(?2) AND
+	     >     UPPER(name2) = UPPER(?3)) OR
+	     >    (UPPER(name2) = UPPER(?1) AND
+	     >     UPPER(name1) = UPPER(?2) AND
+	     >     UPPER(name3) = UPPER(?3)) OR
+	     >    (UPPER(name2) = UPPER(?1) AND
+	     >     UPPER(name3) = UPPER(?2) AND
+	     >     UPPER(name1) = UPPER(?3)) OR
+	     >    (UPPER(name3) = UPPER(?1) AND
+	     >     UPPER(name1) = UPPER(?2) AND
+	     >     UPPER(name2) = UPPER(?3)) OR
+	     >    (UPPER(name3) = UPPER(?1) AND
+	     >     UPPER(name2) = UPPER(?2) AND
+	     >     UPPER(name1) = UPPER(?3))
+	     >)
+	     >HERE_DOC
+	     )
+	(val (read-sanitize prompt)))
+    (cond ((not val)
+	   #f)
+	  ((check-numeric val)
+	   (let ((id (cdr (do-pbrc db ti val))))
+	     (if (null? id)
+		 (begin (printf "author %v is unknown\n" val)
+			#f)
+		 (begin (printf "author %v is %v\n" (caar id) (cdar id))
+			(caar id)))))
+	  (else
+	   (let* ((ns (string-split-by char-whitespace? val))
+		  (nns (list-length ns))
+		  (cns (case nns
+			 ((1) (cdr (apply do-pbrc db tn1 ns)))
+			 ((2) (cdr (apply do-pbrc db tn2 ns)))
+			 ((3) (cdr (apply do-pbrc db tn3 ns)))
+			 (else ()))))
+	     (cond ((null? cns)
+		    (printf "author %v is unknown\n" val)
+		    #f)
+		   ((list-length=? 1 cns)
+		    (printf "author %v is %v\n" (caar cns) (cdar cns))
+		    (caar cns))
+		   (else
+		    (printf "author %v is ambiguous\n" val)
+		    (for-each (lambda (a) (display a) (newline)) cns)
+		    #f)))))))
+
+;;; TODO: this is a monadic pattern - rewrite it that way?
+
+(define (read-authors db)
+  (let ((c1 (check-author db "Author 1")))
+    (if c1
+	(let ((c2 (check-author db "Author 2")))
+	  (if c2
+	      (let ((c3 (check-author db "Author 3")))
+		(if c3
+		    (let ((c4 (check-author db "Author 4")))
+		      (if c4
+			  (let ((c5 (check-author db "Author 5")))
+			    (if c5
+				(list c1 c2 c3 c4 c5)
+				(list c1 c2 c3 c4 #f)))
+			  (list c1 c2 c3 #f #f)))
+		    (list c1 c2 #f #f #f)))
+	      (list c1 #f #f #f #f)))
+	(begin
+	  (write-string "unknown or bad author 1!\n")
+	  '(#f #f #f #f #f)))))
+
+(define (check-numeric val)
+  (if (and val (regex-match "^[0-9]+$" val)) val #f))
+
+(define (read-generic db tname)
+  (let* ((cmd1 (string-append "SELECT * FROM " tname))
+	 (_1 (for-each (lambda (v) (printf "%v\t%v\n" (car v) (cadr v)))
+		       (sqlite-run db cmd1)))
+	 (entry (read-line-interactive (string-append "Enter " tname))))
+    (if (string? entry)
+	(let* ((e1 (string-trim char-whitespace? entry))
+	       (res1 (do-pbrc db (string-append cmd1 " WHERE id = ?1") e1))
+	       (res2 (do-pbrc db (string-append cmd1 " WHERE name = ?1") e1)))
+	  (cond ((list-length=? 2 res1) (caadr res1))
+		((list-length=? 2 res2) (caadr res2))
+		(else (write-string "unknown " tname "!\n")
+		      #f)))
+	#f)))
+
+(define (add-one-book db)
+  (let* ((lam1 (lambda (s) (symbol->string (car s))))
+	 (lam2 (lambda (i) (string-append "?" (number->string i))))
+	 (title (cons 'title (read-sanitize "Title")))
+	 (authors (map cons
+		       '(author1_id author2_id author3_id author4_id author5_id)
+		       (read-authors db)))
+	 (ctype (cons 'content_type_id (read-generic db "content_type")))
+	 (btype (cons 'book_type_id (read-generic db "book_type")))
+	 (publisher (cons 'publisher_id (read-generic db "publisher")))
+	 (year (cons 'year (check-numeric (read-sanitize "Year of publication"))))
+	 (edition (cons 'edition (check-numeric (read-sanitize "Edition"))))
+	 (language (cons 'language_id (read-generic db "language")))
+	 (isbn (cons 'ISBN (check-numeric (read-sanitize "ISBN"))))
+	 (location (cons 'location (read-generic db "location")))
+	 (d1 (list ctype btype publisher year edition language isbn location))
+	 (d2 (cons title (list-append authors d1)))
+	 (d3 (filter (lambda (val) (cdr val)) d2))
+	 (target (string-join-by ", " (map lam1 d3)))
+	 (vstr (string-join-by ", " (map lam2 (fromto 1 (list-length d3)))))
+	 (sstr (string-append
+		"INSERT INTO books (" target ") VALUES (" vstr ")"))
+	 (vals (map cdr d3)))
+    (display sstr)
+    (newline)
+    (display vals)
+    (newline)
+    (let loop ()
+      (let* ((a1 (read-line-interactive "Add entry? \\[Y/n]"))
+	     (ans (if a1 (string-trim-left char-whitespace? a1) "")))
+	(cond ((or (string=? ans "")
+		   (char=? #\y (char-downcase (string-ref ans 0))))
+	       (apply do-pbrc db sstr vals))
+	      ((char=? #\n (char-downcase (string-ref ans 0)))
+	       (write-string "Skip entry!\n"))
+	      (else (write-string "huh? don't understand '" ans "'\n")
+		    (loop)))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (let* ((fvals (parse-command-line-flags
 	       '("-a" strings "add an author")

@@ -9,10 +9,8 @@ repository over. "pustakalaya" is a Sanskrit word meaning "book place"
 (if google translate and the intertubes didn't lie to me... but they
 don't call it *The Net of a Million Lies* for nothing).
 
-## Table of contents
-
-- [License](#license)
-- [Contact me](#contact-me)
+To build it, assuming you have `wile` installed, run `wile -x
+pustakalaya.scm pust` then run `pust -help` and go from there.
 
 ## License
 
@@ -21,8 +19,7 @@ don't call it *The Net of a Million Lies* for nothing).
 ## Contact me
 
 If you have questions, comments, bug reports, patches, please send
-email to me at <uhollerbach@gmail.com>. Please put "WILE" in the
-subject line. You can also reach me on Mastodon, where I am
-@UweHalfHand@norcal.social.
+email to me at <uhollerbach@gmail.com>. You can also reach me on Mastodon,
+where I am @UweHalfHand@norcal.social.
 
 Enjoy! - Uwe Hollerbach
