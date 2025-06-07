@@ -337,7 +337,7 @@
 	 (edition (cons 'edition (check-numeric (read-sanitize "Edition"))))
 	 (language (cons 'language_id (read-generic db "language")))
 	 (isbn (cons 'ISBN (check-numeric (read-sanitize "ISBN"))))
-	 (location (cons 'location (read-generic db "location")))
+	 (location (cons 'location_id (read-generic db "location")))
 	 (d1 (list ctype btype publisher year edition language isbn location))
 	 (d2 (cons title (list-append authors d1)))
 	 (d3 (filter (lambda (val) (cdr val)) d2))
